@@ -26,7 +26,7 @@ test_cases = {1:[[[2.16135,-1.42635,1.55109],
               5:[]}
 
 
-def test_code(test_case):
+def test_code(test_case): 
     ## Set up code
     ## Do not modify!
     x = 0
@@ -61,15 +61,94 @@ def test_code(test_case):
     
     ########################################################################################
     ## 
-
-    ## Insert IK code here!
+	# Define DH param symbols
     
+	d1, d2, d3, d4, d5, d6, d7 = symbols('d1:8')
+    a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7')
+
+    r1, r2, r3 = symbols('r1:4') #Variables the roll, pitch and yaw will be put into to
+ 
+	alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6 = symbols('alpha0:7')
+
+
+    # Joint angle symbols
+    q1, q2, q3, q4, q5, q6, q7 = symbols('q1:8')#The thetas
+	# Modified DH params
+	s = {alpha0:	 0,  a0:        0, d1:	0.75,
+		 alpha1: -pi/2,  a1:     0.35, d2:     0,	q2: q2-pi/2,
+		 alpha2:	 0,  a2:     1.25, d3:     0,
+		 alpha3: -pi/2,  a3:   -0.054, d4:	1.50,
+		 alpha4: -pi/2,  a4:		0, d5:     0,
+		 alpha5: -pi/2,  a5:		0, d6:     0,
+		 alpha6: 	 0,  a6:		0, d7:	0.303,	q7:0}
+
+
+	# Define Modified DH Transformation matrix
+	def TF_Matrix(alpha, a, d, q): 
+		TF = Matrix([[             cos(q),            -sin(q),            0,    a],
+				   [ sin(q)*cos(alpha), cos(q)*cos(alpha), -sin(alpha), -sin(alpha)*d],
+				   [ sin(q)*sin(alpha), cos(q)*sin(alpha),  cos(alpha),  cos(alpha)*d],
+				   [                   0,                   0,            0,               1]])
+		return TF 
+
+	T0_1 = TF_Matrix(alpha0, a0, d1, q1).subs(s)
+	T1_2 = TF_Matrix(alpha1, a1, d2, q2).subs(s)
+	T2_3 = TF_Matrix(alpha2, a2, d3, q3).subs(s)
+	T3_4 = TF_Matrix(alpha3, a3, d4, q4).subs(s)
+	T4_5 = TF_Matrix(alpha4, a4, d5, q5).subs(s)
+	T5_6 = TF_Matrix(alpha5, a5, d6, q6).subs(s)
+	T6_EE = TF_Matrix(alpha6, a6, d7, q7).subs(s)
+
+	T0_EE = T0_1 * T1_2 * T2_3 * T3_4 * T4_5 * T5_6 * T6_EE   
+
+
     theta1 = 0
     theta2 = 0
     theta3 = 0
     theta4 = 0
     theta5 = 0
     theta6 = 0
+
+	# Extract end-effector position and orientation from request
+	# px,py,pz = end-effector position
+	# roll, pitch, yaw = end-effector orientation
+	px = req.poses[x].position.x
+	py = req.poses[x].position.y
+	pz = req.poses[x].position.z
+
+	(roll, pitch, yaw) = tf.transformations.euler_from_quaternion(
+		            [req.poses[x].orientation.x, req.poses[x].orientation.y,
+		                req.poses[x].orientation.z, req.poses[x].orientation.w])
+	
+	#Find EE rotation 
+	#RPY rotation matrices 
+	
+	r, p, y = symbols('r p y')
+	ROT_x = Matrix([[1,		0,		0],
+					[0,cos(r),-sin(r)],
+					[0,sin(r),cos(r)]]) #ROLL
+
+	ROT_y = Matrix([[cos(p),  0, sin(p)],
+					[0,		  1,      0],
+					[-sin(p), 0, cos(p)]]) #Pitch
+
+	ROT_z = ([[	cos(y),-sin(y),		0],
+ 			  [	sin(y),	cos(y),		0],
+			  [	0,			 0,		1]]) #Yaw
+
+	#Rotation Error correction 
+	Rot_Error = ROT_z.subs(y, radians(180)) * ROT_y.subs(p, radians(-90))
+	ROT_EE = ROT_EE * Rot_Error 
+	Rot_EE = ROT_EE.subs({'r':roll, 'p':pitch, 'y': yaw})
+
+	EE = Matrix([[px],[py],[pz]])
+
+	WC = EE - (.303) * ROT_EE[:,2]
+
+	#Calculate joint angles using Geometrix IK method
+	theta1 = atan2(WC[1],WC[0])
+
+
 
     ## 
     ########################################################################################
