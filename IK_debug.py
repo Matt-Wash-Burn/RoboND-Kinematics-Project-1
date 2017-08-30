@@ -1,6 +1,7 @@
 from sympy import *
 from time import time
 from mpmath import radians
+import numpy as np
 import tf
 
 '''
@@ -143,14 +144,17 @@ def test_code(test_case):
 	#Calculate joint angles using Geometrix IK method
     theta1 = atan2(WC[1],WC[0])
 
+#    #This accounts for the case when atan is greater then 1 
+#    if theta1 > 2.2: 
+#        theta1 = theta1 - pi
 	# SSS triangle for theta2 and theta3 
     side_a = 1.501 
     side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1]*WC[1]) - 0.35),2) + pow((WC[2]-0.75),2))
     side_c = 1.250
 
     angle_a = acos((side_b * side_b + side_c * side_c - side_a * side_a) / (2 * side_b * side_c))
-    angle_b = acos((side_a * side_a + side_c * side_c - side_b * side_b) / (2 * side_b * side_c))
-    angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_b * side_c))
+    angle_b = acos((side_a * side_a + side_c * side_c - side_b * side_b) / (2 * side_a * side_c))
+    angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
 
     theta2 = pi/2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
     theta3 = pi/2 - (angle_b +0.036)
@@ -160,9 +164,27 @@ def test_code(test_case):
 
     R3_6 = R0_3.inv("LU") * ROT_EE
 
+    ### Identify useful terms from rotation matrix
+    r31 = R3_6[2,0]
+    r11 = R3_6[0,0]
+    r21 = R3_6[1,0]
+    r32 = R3_6[2,1]
+    r33 = R3_6[2,2]
+
+
 	# Euler angles from rotation matrix 
-    theta4 = atan2(R3_6[2,2], -R3_6[0,2])
-    theta5 = atan2(sqrt(R3_6[0,2]*R3_6[0,2] + R3_6[2,2]*R3_6[2,2]),R3_6[1,2])
+#    first, second, third = tf.transformations.euler_from_matrix(np.array(R3_6).astype(np.float64), "ryzy")
+#    
+#    theta4 = first 
+#    theta5 = second 
+#    theta6 = third
+
+#    theta4 = atan2(r21,r11)
+#    theta5 = atan2(sqrt(r11 * r11 +r21*r21),r31)
+#    theta6 = atan2(r32,r33)
+
+    theta4 = atan2(R3_6[2,2],-R3_6[0,2])
+    theta5 = atan2(sqrt(R3_6[0,2]*R3_6[0,2]+R3_6[2,2]*R3_6[2,2]),R3_6[1,2])
     theta6 = atan2(-R3_6[1,1],R3_6[1,0])
 
 	## 
@@ -192,9 +214,10 @@ def test_code(test_case):
 		wc_y_e = abs(your_wc[1]-test_case[1][1])
 		wc_z_e = abs(your_wc[2]-test_case[1][2])
 		wc_offset = sqrt(wc_x_e**2 + wc_y_e**2 + wc_z_e**2)
-		print ("\nWrist error for x position is: %04.8f" % wc_x_e)
-		print ("Wrist error for y position is: %04.8f" % wc_y_e)
-		print ("Wrist error for z position is: %04.8f" % wc_z_e)
+		print ("\nWrist error for x position is: {0:4.8f} True Value: {1: 4.8f}    Your value: {2:4.8f}".format(np.float64(wc_x_e),np.float64(test_case[1][0]),np.float64(your_wc[0]) ))
+		print ("Wrist error for y position is: {0:4.8f} True Value: {1: 4.8f}    Your value: {2:4.8f}".format(np.float64(wc_y_e),np.float64(test_case[1][1]),np.float64(your_wc[1]) ))
+		print ("Wrist error for z position is: {0:4.8f} True Value: {1: 4.8f}    Your value: {2:4.8f}".format(np.float64(wc_z_e),np.float64(test_case[1][2]),np.float64(your_wc[2]) ))
+
 		print ("Overall wrist offset is: %04.8f units" % wc_offset)
 
 	# Find theta errors
@@ -204,12 +227,24 @@ def test_code(test_case):
     t_4_e = abs(theta4-test_case[2][3])
     t_5_e = abs(theta5-test_case[2][4])
     t_6_e = abs(theta6-test_case[2][5])
-    print ("\nTheta 1 error is: %04.8f" % t_1_e)
-    print ("Theta 2 error is: %04.8f" % t_2_e)
-    print ("Theta 3 error is: %04.8f" % t_3_e)
-    print ("Theta 4 error is: %04.8f" % t_4_e)
-    print ("Theta 5 error is: %04.8f" % t_5_e)
-    print ("Theta 6 error is: %04.8f" % t_6_e)
+
+#More information about troubleshooting. 
+
+    print ("\nTheta 1 error is: {0:4.8f}    Truth value: {1:4.8f}    Your value: {2:4.8f}".format( np.float64(t_1_e), np.float64(test_case[2][0]), np.float64(theta1) ))
+    print ("Theta 2 error is: {0:4.8f}    Truth value: {1:4.8f}    Your value: {2:4.8f}".format( np.float64(t_2_e), np.float64(test_case[2][1]), np.float64(theta2) ))
+    print ("Theta 3 error is: {0:4.8f}    Truth value: {1:4.8f}    Your value: {2:4.8f}".format( np.float64(t_3_e), np.float64(test_case[2][2]), np.float64(theta3) ))
+    print ("Theta 4 error is: {0:4.8f}    Truth value: {1:4.8f}    Your value: {2:4.8f}".format( np.float64(t_4_e), np.float64(test_case[2][3]), np.float64(theta4) ))
+    print ("Theta 5 error is: {0:4.8f}    Truth value: {1:4.8f}    Your value: {2:4.8f}".format( np.float64(t_5_e), np.float64(test_case[2][4]), np.float64(theta5) ))
+    print ("Theta 6 error is: {0:4.8f}    Truth value: {1:4.8f}    Your value: {2:4.8f}".format( np.float64(t_6_e), np.float64(test_case[2][5]), np.float64(theta6) ))
+
+
+
+##    print ("\nTheta 1 error is: %04.8f    Truth value: %14.8f    Your value: %24.8f" % t_1_e, test_case[2][0], theta1 )
+#    print ("Theta 2 error is: %04.8f" % t_2_e)
+#    print ("Theta 3 error is: %04.8f" % t_3_e)
+#    print ("Theta 4 error is: %04.8f" % t_4_e)
+#    print ("Theta 5 error is: %04.8f" % t_5_e)
+#    print ("Theta 6 error is: %04.8f" % t_6_e)
     print ("\n**These theta errors may not be a correct representation of your code, due to the fact \
 		   \nthat the arm can have muliple positions. It is best to add your forward kinmeatics to \
 		   \nconfirm whether your code is working or not**")
@@ -231,6 +266,6 @@ def test_code(test_case):
 
 if __name__ == "__main__":
     # Change test case number for different scenarios
-    test_case_number = 1
+    test_case_number = 2
 
     test_code(test_cases[test_case_number])

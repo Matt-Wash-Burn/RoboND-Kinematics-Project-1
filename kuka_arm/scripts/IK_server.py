@@ -17,6 +17,7 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from geometry_msgs.msg import Pose
 from mpmath import *
 from sympy import *
+import numpy as np
 
 
 def handle_calculate_IK(req):
@@ -26,12 +27,7 @@ def handle_calculate_IK(req):
         return -1
     else:
         
-        ### Your FK code here
-        # Create symbols
-	    #
-	    #   
-	    # Create Modified DH parameters
-	    #
+    # Setting up Symbols and functions 
         d1, d2, d3, d4, d5, d6, d7 = symbols('d1:8')
         a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7')
 
@@ -44,21 +40,22 @@ def handle_calculate_IK(req):
         q1, q2, q3, q4, q5, q6, q7 = symbols('q1:8')#The thetas
         # Modified DH params
         s = {alpha0:	 0,  a0:        0, d1:	0.75,
-	         alpha1: -pi/2,  a1:     0.35, d2:     0,	q2: q2-pi/2,
-	         alpha2:	 0,  a2:     1.25, d3:     0,
-	         alpha3: -pi/2,  a3:   -0.054, d4:	1.50,
-	         alpha4: -pi/2,  a4:		0, d5:     0,
-	         alpha5: -pi/2,  a5:		0, d6:     0,
-	         alpha6: 	 0,  a6:		0, d7:	0.303,	q7:0}
-
+                 alpha1: -pi/2,  a1:     0.35, d2:     0,	q2: q2-pi/2,
+                 alpha2:	 0,  a2:     1.25, d3:     0,
+                 alpha3: -pi/2,  a3:   -0.054, d4:	1.50,
+                 alpha4: -pi/2,  a4:		0, d5:     0,
+                 alpha5: -pi/2,  a5:		0, d6:     0,
+                 alpha6: 	 0,  a6:		0, d7:	0.303,	q7:0}
+        print "Verables set up."
 
         # Define Modified DH Transformation matrix
         def TF_Matrix(alpha, a, d, q): 
-	        TF = Matrix([[             cos(q),            -sin(q),            0,    a],
-			           [ sin(q)*cos(alpha), cos(q)*cos(alpha), -sin(alpha), -sin(alpha)*d],
-			           [ sin(q)*sin(alpha), cos(q)*sin(alpha),  cos(alpha),  cos(alpha)*d],
-			           [                   0,                   0,            0,               1]])
-	        return TF 
+                TF = Matrix([[             cos(q),            -sin(q),            0,    a],
+	                           [ sin(q)*cos(alpha), cos(q)*cos(alpha), -sin(alpha), -sin(alpha)*d],
+	                           [ sin(q)*sin(alpha), cos(q)*sin(alpha),  cos(alpha),  cos(alpha)*d],
+	                           [                   0,                   0,            0,               1]])
+                return TF 
+
         # Create individual transformation matrices
         T0_1 = TF_Matrix(alpha0, a0, d1, q1).subs(s)
         T1_2 = TF_Matrix(alpha1, a1, d2, q2).subs(s)
@@ -77,19 +74,18 @@ def handle_calculate_IK(req):
 
         r, p, y = symbols('r p y')
         ROT_x = Matrix([[1,		0,		0],
-				        [0,cos(r),-sin(r)],
-				        [0,sin(r),cos(r)]]) #ROLL
+			            [0,cos(r),-sin(r)],
+			            [0,sin(r),cos(r)]]) #ROLL
 
         ROT_y = Matrix([[cos(p),  0, sin(p)],
-				        [0,		  1,      0],
-				        [-sin(p), 0, cos(p)]]) #Pitch
+			            [0,		  1,      0],
+			            [-sin(p), 0, cos(p)]]) #Pitch
 
         ROT_z = Matrix([[	cos(y),-sin(y),		0],
-		                [	sin(y),	cos(y),		0],
-		                [	0,			 0,		1]]) #Yaw
+	                    [	sin(y),	cos(y),		0],
+	                    [	0,			 0,		1]]) #Yaw
 
         ROT_EE = ROT_z * ROT_y  * ROT_x
-
 
        #Initialize service response
         joint_trajectory_list = []
@@ -127,8 +123,8 @@ def handle_calculate_IK(req):
             side_c = 1.250
 
             angle_a = acos((side_b * side_b + side_c * side_c - side_a * side_a) / (2 * side_b * side_c))
-            angle_b = acos((side_a * side_a + side_c * side_c - side_b * side_b) / (2 * side_b * side_c))
-            angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_b * side_c))
+            angle_b = acos((side_a * side_a + side_c * side_c - side_b * side_b) / (2 * side_a * side_c))
+            angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
 
             theta2 = pi/2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
             theta3 = pi/2 - (angle_b +0.036)
@@ -140,7 +136,7 @@ def handle_calculate_IK(req):
 
             # Euler angles from rotation matrix 
             theta4 = atan2(R3_6[2,2], -R3_6[0,2])
-            theta5 = atan2(sqrt(R3_6[0,2]*R3_6[0,2] + R3_6[2,2]*R3_6[2,2]),R3_6[1,2])
+            theta5 = np.clip(atan2(sqrt(R3_6[0,2]*R3_6[0,2] + R3_6[2,2]*R3_6[2,2]),R3_6[1,2]),-2,2)
             theta6 = atan2(-R3_6[1,1],R3_6[1,0])
                     ###
 
@@ -157,6 +153,9 @@ def IK_server():
     # initialize node and declare calculate_ik service
     rospy.init_node('IK_server')
     s = rospy.Service('calculate_ik', CalculateIK, handle_calculate_IK)
+
+    
+
     print "Ready to receive an IK request"
     rospy.spin()
 
