@@ -113,32 +113,81 @@ def handle_calculate_IK(req):
             EE = Matrix([[px],[py],[pz]])
 
             WC = EE - (.303) * ROT_EE[:,2]
+            #Test 3: 
+            #Calculate IK 
+            theta1 = atan2(py,px)
+            print("theta1 = ",theta1)
 
-            #Calculate joint angles using Geometrix IK method
-            theta1 = atan2(WC[1],WC[0])
+            j2z = 0.75 
+            j2x = 0.35 * cos(theta1)
+            j2y = 0.35 * sin(theta1)
+            
+            vector_z_length = sqrt( np.square(px - j2x) + np.square(py - j2y)+np.square(pz - j2z))
+            
+            
+            vector_x_length = sqrt( np.square(2.53 - 0.35)+np.square(1.946 - 2.0))
 
-            # SSS triangle for theta2 and theta3 
-            side_a = 1.501 
-            side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1]*WC[1]) - 0.35),2) + pow((WC[2]-0.75),2))
-            side_c = 1.250
+            angle_alpha = asin((j2z - pz) / vector_z_length)
+            
+            angle_beta = acos( (np.square(1.25) + np.square(vector_z_length) - np.square(vector_x_length)) / (2 * 1.25 * vector_z_length))
+            
+            theta2 = np.pi/2 - angle_beta + angle_alpha
+            print("theta2 = ",theta2)
+            j3z = j2z +(1.25 * cos(theta2))
 
-            angle_a = acos((side_b * side_b + side_c * side_c - side_a * side_a) / (2 * side_b * side_c))
-            angle_b = acos((side_a * side_a + side_c * side_c - side_b * side_b) / (2 * side_a * side_c))
-            angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
+            j3z_jgz = j3z - 0.054 - pz
 
-            theta2 = pi/2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
-            theta3 = pi/2 - (angle_b +0.036)
+            theta3 = asin(j3z_jgz / vector_x_length) - theta2
+            print("theta3 = ", theta3)
 
-            R0_3 = T0_1[0:3,0:3] * T1_2[0:3,0:3] * T2_3[0:3,0:3]
-            R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3})
 
-            R3_6 = R0_3.inv("LU") * ROT_EE
+#Test 2: 
+#            #Calculate IK 
+#            theta1 = atan2(py,px)
 
-            # Euler angles from rotation matrix 
-            theta4 = atan2(R3_6[2,2], -R3_6[0,2])
-            theta5 = np.clip(atan2(sqrt(R3_6[0,2]*R3_6[0,2] + R3_6[2,2]*R3_6[2,2]),R3_6[1,2]),-2,2)
-            theta6 = atan2(-R3_6[1,1],R3_6[1,0])
-                    ###
+#            #Calculate theta2 and theta3 while theta 4,5,6 = 0
+#            side_a = 1.25
+#            side_b = 1.80452
+#            side_l = sqrt((px - .35)*(px - .35) + (pz - .75)*(pz - .75))
+#            
+#            #Once the triangle is built we cans uses the law of cosins to find the angles 
+#            #SSS triangle 
+#            angle_b = acos((side_a * side_a + side_l * side_l - side_b * side_b) / (2 * side_a * side_l))
+#            angle_l = acos((side_a * side_a + side_b * side_b - side_l * side_l) / (2 * side_a * side_b))
+#            
+#            theta2 = pi/2 - angle_b - atan2(pz - 0.75, sqrt(px * px + py * py) - 0.35)
+#            theta3 = pi - angle_l 
+
+            theta4 = 0 
+            theta5 = 0 
+            theta6 = 0 
+
+
+#            #Calculate joint angles using Geometrix IK method
+#            theta1 = atan2(WC[1],WC[0])
+
+#            # SSS triangle for theta2 and theta3 
+#            side_a = 1.501 
+#            side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1]*WC[1]) - 0.35),2) + pow((WC[2]-0.75),2))
+#            side_c = 1.250
+
+#            angle_a = acos((side_b * side_b + side_c * side_c - side_a * side_a) / (2 * side_b * side_c))
+#            angle_b = acos((side_a * side_a + side_c * side_c - side_b * side_b) / (2 * side_a * side_c))
+#            angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
+
+#            theta2 = pi/2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
+#            theta3 = pi/2 - (angle_b +0.036)
+
+#            R0_3 = T0_1[0:3,0:3] * T1_2[0:3,0:3] * T2_3[0:3,0:3]
+#            R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3})
+
+#            R3_6 = R0_3.inv("LU") * ROT_EE
+
+#            # Euler angles from rotation matrix 
+#            theta4 = atan2(R3_6[2,2], -R3_6[0,2])
+#            theta5 = np.clip(atan2(sqrt(R3_6[0,2]*R3_6[0,2] + R3_6[2,2]*R3_6[2,2]),R3_6[1,2]),-2,2)
+#            theta6 = atan2(-R3_6[1,1],R3_6[1,0])
+#                    ###
 
                 # Populate response for the IK request
                 # In the next line replace theta1,theta2...,theta6 by your joint angle variables

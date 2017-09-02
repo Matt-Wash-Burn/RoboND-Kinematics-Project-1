@@ -142,52 +142,93 @@ def test_code(test_case):
     WC = EE - (.303) * ROT_EE[:,2]
 
 	#Calculate joint angles using Geometrix IK method
-    theta1 = atan2(WC[1],WC[0])
+    #theta1 = atan2(WC[1],WC[0])
+    #Calculate IK 
+    theta1 = atan2(py,px)
 
-#    #This accounts for the case when atan is greater then 1 
-#    if theta1 > 2.2: 
-#        theta1 = theta1 - pi
-	# SSS triangle for theta2 and theta3 
-    side_a = 1.501 
-    side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1]*WC[1]) - 0.35),2) + pow((WC[2]-0.75),2))
-    side_c = 1.250
+    j2z = 0.75 
+    j2x = 0.35 * cos(theta1)
+    j2y = 0.35 * sin(theta1)
+    
+    j2pz =  j2z - pz
+    
+    blength = sqrt( np.square(px - j2x) + np.square(py - p2y)+np.square(pz - j2z))
+    
+    j3p = sqrt( np.square(2.53 - 0.35)+np.square(1.946 - 2.0))
 
-    angle_a = acos((side_b * side_b + side_c * side_c - side_a * side_a) / (2 * side_b * side_c))
-    angle_b = acos((side_a * side_a + side_c * side_c - side_b * side_b) / (2 * side_a * side_c))
-    angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
+    angle1 = asin(j2pz / blength)
+    
+    f1 = acos( (np.square(1.25) + np.square(blength) - np.square(j3p)) / (2 * 1.25 * blength))
+    
+    theta2 = np.pi/2 + g1 - f1
 
-    theta2 = pi/2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
-    theta3 = pi/2 - (angle_b +0.036)
+    j3z = j2z +(1.25 * cos(theta2))
 
-    R0_3 = T0_1[0:3,0:3] * T1_2[0:3,0:3] * T2_3[0:3,0:3]
-    R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3})
+    s = j3z - 0.054 - pz
 
-    R3_6 = R0_3.inv("LU") * ROT_EE
+    theta3 = asin(s / j3p) - theta2
 
-    ### Identify useful terms from rotation matrix
-    r31 = R3_6[2,0]
-    r11 = R3_6[0,0]
-    r21 = R3_6[1,0]
-    r32 = R3_6[2,1]
-    r33 = R3_6[2,2]
-
-
-	# Euler angles from rotation matrix 
-#    first, second, third = tf.transformations.euler_from_matrix(np.array(R3_6).astype(np.float64), "ryzy")
+#    #Calculate theta2 and theta3 while theta 4,5,6 = 0
+#    side_a = 1.25
+#    side_b = 1.80452
+#    side_l = sqrt((px - .35)*(px - .35) + (pz - .75)*(pz - .75))
 #    
-#    theta4 = first 
-#    theta5 = second 
-#    theta6 = third
+#    #Once the triangle is built we cans uses the law of cosins to find the angles 
+#    #SSS triangle 
+#    angle_b = acos((side_a * side_a + side_l * side_l - side_b * side_b) / (2 * side_a * side_l))
+#    angle_l = acos((side_a * side_a + side_b * side_b - side_l * side_l) / (2 * side_a * side_b))
+#    
+#    theta2 = pi/2 - angle_b - atan2(pz - 0.75, sqrt(px * px + py * py) - 0.35)
+#    
+#    theta3 = pi/2 - (angle_l +0.036)
 
-#    theta4 = atan2(r21,r11)
-#    theta5 = atan2(sqrt(r11 * r11 +r21*r21),r31)
-#    theta6 = atan2(r32,r33)
+#    theta4 = 0 
+#    theta5 = 0 
+#    theta6 = 0 
+##    #This accounts for the case when atan is greater then 1 
+##    if theta1 > 2.2: 
+##        theta1 = theta1 - pi
+#	# SSS triangle for theta2 and theta3 
+#    side_a = 1.501 
+#    side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1]*WC[1]) - 0.35),2) + pow((WC[2]-0.75),2))
+#    side_c = 1.250
 
-    theta4 = atan2(R3_6[2,2],-R3_6[0,2])
-    theta5 = atan2(sqrt(R3_6[0,2]*R3_6[0,2]+R3_6[2,2]*R3_6[2,2]),R3_6[1,2])
-    theta6 = atan2(-R3_6[1,1],R3_6[1,0])
+#    angle_a = acos((side_b * side_b + side_c * side_c - side_a * side_a) / (2 * side_b * side_c))
+#    angle_b = acos((side_a * side_a + side_c * side_c - side_b * side_b) / (2 * side_a * side_c))
+#    angle_c = acos((side_a * side_a + side_b * side_b - side_c * side_c) / (2 * side_a * side_b))
 
-	## 
+#    theta2 = pi/2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35)
+#    theta3 = pi/2 - (angle_b +0.036)
+
+#    R0_3 = T0_1[0:3,0:3] * T1_2[0:3,0:3] * T2_3[0:3,0:3]
+#    R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3})
+
+#    R3_6 = R0_3.inv("LU") * ROT_EE
+
+#    ### Identify useful terms from rotation matrix
+#    r31 = R3_6[2,0]
+#    r11 = R3_6[0,0]
+#    r21 = R3_6[1,0]
+#    r32 = R3_6[2,1]
+#    r33 = R3_6[2,2]
+
+
+#	# Euler angles from rotation matrix 
+##    first, second, third = tf.transformations.euler_from_matrix(np.array(R3_6).astype(np.float64), "ryzy")
+##    
+##    theta4 = first 
+##    theta5 = second 
+##    theta6 = third
+
+##    theta4 = atan2(r21,r11)
+##    theta5 = atan2(sqrt(r11 * r11 +r21*r21),r31)
+##    theta6 = atan2(r32,r33)
+
+#    theta4 = atan2(R3_6[2,2],-R3_6[0,2])
+#    theta5 = atan2(sqrt(R3_6[0,2]*R3_6[0,2]+R3_6[2,2]*R3_6[2,2]),R3_6[1,2])
+#    theta6 = atan2(-R3_6[1,1],R3_6[1,0])
+
+
 	########################################################################################
 
 	########################################################################################
@@ -252,20 +293,24 @@ def test_code(test_case):
 
 	# Find FK EE error
     if not(sum(your_ee)==3):
-		ee_x_e = abs(your_ee[0]-test_case[0][0][0])
-		ee_y_e = abs(your_ee[1]-test_case[0][0][1])
-		ee_z_e = abs(your_ee[2]-test_case[0][0][2])
-		ee_offset = sqrt(ee_x_e**2 + ee_y_e**2 + ee_z_e**2)
-		print ("\nEnd effector error for x position is: %04.8f" % ee_x_e)
-		print ("End effector error for y position is: %04.8f" % ee_y_e)
-		print ("End effector error for z position is: %04.8f" % ee_z_e)
-		print ("Overall end effector offset is: %04.8f units \n" % ee_offset)
+        ee_x_e = abs(your_ee[0]-test_case[0][0][0])
+        ee_y_e = abs(your_ee[1]-test_case[0][0][1])
+        ee_z_e = abs(your_ee[2]-test_case[0][0][2])
+        ee_offset = sqrt(ee_x_e**2 + ee_y_e**2 + ee_z_e**2)
+
+        print ("\nEnd effector error for x position is: {0:4.8f}    Truth value: {1:4.8f}    Your value: {2:4.8f}".format( np.float64(ee_x_e), np.float64(test_case[0][0][0]), np.float64(your_ee[0])))
+        print ("End effector error for y position is: {0:4.8f}    Truth value: {1:4.8f}    Your value: {2:4.8f}".format( np.float64(ee_y_e), np.float64(test_case[0][0][1]), np.float64(your_ee[1])))
+        print ("End effector error for z position is: {0:4.8f}    Truth value: {1:4.8f}    Your value: {2:4.8f}".format( np.float64(ee_z_e), np.float64(test_case[0][0][2]), np.float64(your_ee[2])))
+#		print ("\nEnd effector error for x position is: {0:4.8f}".format(np.float64(ee_x_e)))
+#		print ("End effector error for y position is: %04.8f" % ee_y_e)
+#		print ("End effector error for z position is: %04.8f" % ee_z_e)
+        print ("Overall end effector offset is: %04.8f units \n" % ee_offset)
 
 
 
 
 if __name__ == "__main__":
     # Change test case number for different scenarios
-    test_case_number = 2
+    test_case_number = 1
 
     test_code(test_cases[test_case_number])
